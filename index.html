@@ -211,6 +211,7 @@
   .power-btn .badge{background:var(--plum);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;}
   .power-btn:disabled{opacity:.4;cursor:not-allowed;}
   .power-btn.active-glow{border-color:var(--gold);box-shadow:0 0 14px var(--gold);}
+  .power-btn.touched-glow{border-color:var(--jade);box-shadow:0 0 18px var(--jade);transform:scale(1.08);}
   #questionBox{
     background:#fff;margin:6px auto;padding:20px 30px;border-radius:24px;max-width:640px;
     box-shadow:0 10px 24px rgba(107,78,142,.18);font-family:'Kanit',sans-serif;font-weight:600;font-size:clamp(18px,3vw,24px);
@@ -256,9 +257,9 @@
   }
   @keyframes hintPulse{0%,100%{box-shadow:0 0 0 6px #fff59d,0 0 20px var(--gold);}50%{box-shadow:0 0 0 10px #fff59d,0 0 34px var(--gold);}}
 
-  #cursorDot{position:absolute;width:28px;height:28px;border-radius:50%;
+  #cursorDot{position:fixed;width:28px;height:28px;border-radius:50%;
     background:radial-gradient(circle,#fff,var(--gold));box-shadow:0 0 16px var(--gold);
-    pointer-events:none;z-index:10;transform:translate(-50%,-50%);display:none;}
+    pointer-events:none;z-index:60;transform:translate(-50%,-50%);display:none;}
   #cursorDot.pinching{background:radial-gradient(circle,#fff,var(--rose));box-shadow:0 0 22px var(--rose);}
 
   #dropZone{
@@ -416,7 +417,6 @@
       <div id="dropZone">วางที่นี่เพื่อตอบ</div>
       <div id="bubbleField"></div>
     </div>
-    <div id="cursorDot"></div>
   </div>
 
   <div class="screen vivid-bg" id="screen-result">
@@ -461,6 +461,7 @@
       <li>ตอบถูกครบทุกข้อในด่าน จะได้ <b>โบนัสความสมบูรณ์แบบ +200</b></li>
     </ul>
     <h3>การ์ดพลังช่วยเหลือ (ใช้ได้จำกัดต่อด่าน)</h3>
+    <p style="font-size:13px;color:#7a5aa8;margin-top:-4px;">ถ้าเล่นด้วยมือ สามารถเอาปลายนิ้วไปแตะที่ปุ่มการ์ดพลังโดยตรงเพื่อใช้งานได้เลย ไม่ต้องใช้เมาส์</p>
     <div class="power-explain"><span class="ic">⏰</span> เวลาพิเศษ — เพิ่มเวลา 10 วินาทีในข้อนั้น</div>
     <div class="power-explain"><span class="ic">✂️</span> ตัดตัวเลือก — ตัดคำตอบผิดออก 2 ตัวเลือก</div>
     <div class="power-explain"><span class="ic">💡</span> ใบ้คำตอบ — ฟองคำตอบที่ถูกจะเรืองแสงชั่วครู่</div>
@@ -470,6 +471,7 @@
 </div>
 
 <div class="flash-overlay" id="flashOverlay"></div>
+<div id="cursorDot"></div>
 
 <script>
 const LEVELS = [
@@ -728,7 +730,10 @@ function submitLogin(){
 }
 
 /* ================= HAND TRACKING SETUP ================= */
+let handsInitInFlight = false;
 async function initHands(){
+  if(usingHandMode || handsInitInFlight) return;
+  handsInitInFlight = true;
   const videoEl = document.getElementById('videoCalib');
   try{
     handsInstance = new Hands({locateFile:function(f){ return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f; }});
@@ -755,17 +760,21 @@ async function initHands(){
     document.getElementById('camStatus').textContent = '⚠️ เปิดกล้องไม่ได้ — ใช้โหมดแตะหน้าจอแทนได้เลย';
     enableFallback();
   }
+  handsInitInFlight = false;
 }
 
 function onHandResults(results){
   const calibCanvas = document.getElementById('handCanvasCalib');
   const gameCanvas = document.getElementById('handCanvas');
-  const activeScreen = document.getElementById('screen-camera').classList.contains('active') ? calibCanvas :
-                       (document.getElementById('screen-game').classList.contains('active') ? gameCanvas : null);
-  if(!activeScreen) return;
-  const ctx = activeScreen.getContext('2d');
-  activeScreen.width = activeScreen.offsetWidth; activeScreen.height = activeScreen.offsetHeight;
-  ctx.clearRect(0,0,activeScreen.width,activeScreen.height);
+  const isCalibActive = document.getElementById('screen-camera').classList.contains('active');
+  const isGameActive = document.getElementById('screen-game').classList.contains('active');
+  const drawCanvas = isCalibActive ? calibCanvas : (isGameActive ? gameCanvas : null);
+
+  if(drawCanvas){
+    const ctx = drawCanvas.getContext('2d');
+    drawCanvas.width = drawCanvas.offsetWidth; drawCanvas.height = drawCanvas.offsetHeight;
+    ctx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  }
 
   if(results.multiHandLandmarks && results.multiHandLandmarks.length>0){
     const lm = results.multiHandLandmarks[0];
@@ -774,15 +783,22 @@ function onHandResults(results){
     cursorY = indexTip.y;
     handVisible = true;
 
-    ctx.fillStyle = 'rgba(232,184,75,.7)';
-    lm.forEach(p=>{ ctx.beginPath(); ctx.arc((1-p.x)*activeScreen.width, p.y*activeScreen.height, 4,0,7); ctx.fill(); });
-    // ไฮไลต์ปลายนิ้วชี้ให้เห็นชัดเจน (จุดที่ใช้แตะคำตอบ)
-    ctx.fillStyle = 'rgba(255,201,74,.95)';
-    ctx.beginPath(); ctx.arc((1-indexTip.x)*activeScreen.width, indexTip.y*activeScreen.height, 9,0,7); ctx.fill();
+    if(drawCanvas){
+      const ctx = drawCanvas.getContext('2d');
+      ctx.fillStyle = 'rgba(232,184,75,.7)';
+      lm.forEach(p=>{ ctx.beginPath(); ctx.arc((1-p.x)*drawCanvas.width, p.y*drawCanvas.height, 4,0,7); ctx.fill(); });
+      // ไฮไลต์ปลายนิ้วชี้ให้เห็นชัดเจน (จุดที่ใช้แตะคำตอบ)
+      ctx.fillStyle = 'rgba(255,201,74,.95)';
+      ctx.beginPath(); ctx.arc((1-indexTip.x)*drawCanvas.width, indexTip.y*drawCanvas.height, 9,0,7); ctx.fill();
+    }
 
-    if(activeScreen===gameCanvas){ updateCursor(); handleGrabLogic(); }
+    // จุดเรืองแสงตามปลายนิ้วให้เห็นได้ทุกหน้าจอ (ตั้งแต่หน้ากรอกชื่อเป็นต้นไป)
+    updateCursor();
+    if(isGameActive) handleGrabLogic();
   } else {
     handVisible = false;
+    const dot = document.getElementById('cursorDot');
+    if(dot) dot.style.display = 'none';
   }
 }
 
@@ -896,11 +912,39 @@ function releaseBubble(b){
   b.style.top = (b.dataset.origTop||50)+'%';
 }
 
+const powerTouchCooldown = {};
+function checkPowerButtonTouch(px, py){
+  const now = Date.now();
+  const buttons = [
+    {id:'pbTime', fn:usePowerTime},
+    {id:'pbFifty', fn:usePowerFifty},
+    {id:'pbHint', fn:usePowerHint},
+    {id:'pbMulti', fn:usePowerMulti},
+  ];
+  buttons.forEach(function(item){
+    const el = document.getElementById(item.id);
+    if(!el || el.disabled) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const radius = Math.max(r.width, r.height)/2 + 22;
+    if(Math.hypot(px-cx, py-cy) < radius){
+      if(!powerTouchCooldown[item.id] || now > powerTouchCooldown[item.id]){
+        item.fn();
+        powerTouchCooldown[item.id] = now + 900;
+        el.classList.add('touched-glow');
+        setTimeout(()=>el.classList.remove('touched-glow'), 300);
+      }
+    }
+  });
+}
+
 function handleGrabLogic(){
   if(!document.getElementById('screen-game').classList.contains('active')) return;
   const field = document.getElementById('bubbleField');
   const bubbles = [...field.querySelectorAll('.bubble:not(.removed-fifty)')];
   const px = cursorX*window.innerWidth, py = cursorY*window.innerHeight;
+
+  checkPowerButtonTouch(px, py);
 
   // ยังไม่ได้จับอะไรอยู่ -> ลองจับฟองที่ปลายนิ้วอยู่ใกล้ๆ (ไม่ต้องบีบนิ้ว แค่เอาปลายนิ้วไปแตะใกล้ๆ ก็จับติด)
   if(!grabbedBubbleEl){
@@ -1205,6 +1249,7 @@ safeRun(()=>{
   spawnBubbles('bubbleBgLevels', 18);
 }, 'spawnBubbles');
 safeRun(renderLevels, 'renderLevels');
+safeRun(initHands, 'initHands');
 </script>
 </body>
 </html>
