@@ -262,9 +262,10 @@
   #cursorDot.pinching{background:radial-gradient(circle,#fff,var(--rose));box-shadow:0 0 22px var(--rose);}
 
   #dropZone{
-    margin:8px auto 16px;width:140px;height:70px;border:3px dashed var(--plum);border-radius:20px;
-    display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;color:var(--plum);
-    background:rgba(255,255,255,.6);position:relative;z-index:5;
+    margin:6px auto 10px;width:190px;height:190px;border:4px dashed var(--plum);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-family:'Kanit',sans-serif;font-weight:700;
+    color:var(--plum);font-size:16px;text-align:center;padding:10px;
+    background:rgba(255,255,255,.55);position:relative;z-index:5;
   }
 
   .footer-credit{position:relative;z-index:2;margin-top:18px;font-size:12.5px;color:#8a7fa3;font-family:'Sarabun',sans-serif;line-height:1.6;}
@@ -363,7 +364,7 @@
     <div class="bubble-bg" id="bubbleBgCam"></div>
     <div class="content-layer">
       <h2>🖐️ เปิดกล้องเพื่อเล่นด้วยมือ</h2>
-      <p class="sub">อนุญาตให้เว็บนี้ใช้กล้อง แล้วยกมือขึ้นให้เห็นในกรอบ ทำท่า "หยิบจับ" (นิ้วโป้งแตะนิ้วชี้) เพื่อทดสอบ</p>
+      <p class="sub">อนุญาตให้เว็บนี้ใช้กล้อง แล้วยกมือขึ้นให้เห็นในกรอบ เอา<b>ปลายนิ้วชี้</b>ไปแตะใกล้ๆ สิ่งของบนจอเพื่อทดสอบ (ไม่ต้องบีบนิ้ว)</p>
       <div style="position:relative;width:min(480px,90vw);aspect-ratio:4/3;border-radius:24px;overflow:hidden;box-shadow:0 10px 30px rgba(107,78,142,.25);margin:0 auto;">
         <video id="videoCalib" style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1);"></video>
         <canvas id="handCanvasCalib" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
@@ -451,8 +452,8 @@
     <h2>❓ วิธีเล่นเกม</h2>
     <ul>
       <li>เปิดกล้องแล้วยกมือขึ้นให้เห็นในกรอบ ใช้ <b>นิ้วชี้</b> เล็งไปที่คำตอบ (มีจุดประกายทองตามนิ้ว)</li>
-      <li>ทำท่า <b>"หยิบจับ"</b> โดยเอานิ้วโป้งแตะนิ้วชี้ เพื่อ "หยิบ" ฟองคำตอบ</li>
-      <li>ลากฟองคำตอบไปวางใน <b>กล่องวงกลมประ</b> กลางจอ แล้วปล่อยนิ้วเพื่อยืนยันคำตอบ</li>
+      <li>เอา <b>ปลายนิ้วชี้</b> ไปแตะใกล้ๆ ฟองคำตอบที่ต้องการ ฟองจะ "ติด" ที่ปลายนิ้วเองโดยไม่ต้องบีบนิ้ว</li>
+      <li>เลื่อนมือพาฟองมาไว้ใน <b>วงกลมประที่ขยายใหญ่</b> กลางจอ พอฟองเข้าวงกลม ระบบจะ<b>ตอบให้อัตโนมัติทันที</b> ไม่ต้องบีบหรือปล่อยนิ้วเลย</li>
       <li>ถ้ากล้องใช้ไม่ได้ สามารถกด "ขอเล่นด้วยการแตะแทน" แล้วแตะคำตอบบนจอได้เลย</li>
       <li>ตอบถูกเร็วจะได้ <b>โบนัสเวลา</b> และถ้าตอบถูกติดกัน 3 ข้อขึ้นไปจะได้ <b>โบนัสคอมโบ</b></li>
       <li>ตอบถูกครบทุกข้อในด่าน จะได้ <b>โบนัสความสมบูรณ์แบบ +200</b></li>
@@ -545,7 +546,7 @@ let timeLeft = 12;
 let usingHandMode = false;
 let handsInstance = null;
 let cameraInstance = null;
-let cursorX = 0.5, cursorY = 0.5, isPinching = false, wasPinching = false;
+let cursorX = 0.5, cursorY = 0.5, handVisible = false;
 let grabbedBubbleEl = null;
 let ownerMode = false;
 let currentRoomFilter = 'ทั้งหมด';
@@ -738,7 +739,7 @@ async function initHands(){
     });
     await cameraInstance.start();
     usingHandMode = true;
-    document.getElementById('camStatus').textContent = '✅ พบมือแล้ว! ทำท่าหยิบจับ (โป้ง+ชี้) เพื่อทดสอบ';
+    document.getElementById('camStatus').textContent = '✅ พบมือแล้ว! เอาปลายนิ้วชี้ไปแตะใกล้ๆ สิ่งของเพื่อทดสอบ';
     document.getElementById('btnCamOk').disabled = false;
     // แชร์สตรีมกล้องเดียวกันไปให้ video ในหน้าเกมด้วย เพื่อให้เห็นภาพกล้องระหว่างเล่น
     try{
@@ -766,17 +767,20 @@ function onHandResults(results){
 
   if(results.multiHandLandmarks && results.multiHandLandmarks.length>0){
     const lm = results.multiHandLandmarks[0];
-    const indexTip = lm[8], thumbTip = lm[4];
+    const indexTip = lm[8];
     cursorX = 1 - indexTip.x;
     cursorY = indexTip.y;
-    const dist = Math.hypot(indexTip.x-thumbTip.x, indexTip.y-thumbTip.y, (indexTip.z||0)-(thumbTip.z||0));
-    wasPinching = isPinching;
-    isPinching = dist < 0.06;
+    handVisible = true;
 
     ctx.fillStyle = 'rgba(232,184,75,.7)';
     lm.forEach(p=>{ ctx.beginPath(); ctx.arc((1-p.x)*activeScreen.width, p.y*activeScreen.height, 4,0,7); ctx.fill(); });
+    // ไฮไลต์ปลายนิ้วชี้ให้เห็นชัดเจน (จุดที่ใช้แตะคำตอบ)
+    ctx.fillStyle = 'rgba(255,201,74,.95)';
+    ctx.beginPath(); ctx.arc((1-indexTip.x)*activeScreen.width, indexTip.y*activeScreen.height, 9,0,7); ctx.fill();
 
     if(activeScreen===gameCanvas){ updateCursor(); handleGrabLogic(); }
+  } else {
+    handVisible = false;
   }
 }
 
@@ -785,7 +789,7 @@ function updateCursor(){
   dot.style.display='block';
   dot.style.left = (cursorX*window.innerWidth)+'px';
   dot.style.top = (cursorY*window.innerHeight)+'px';
-  dot.classList.toggle('pinching', isPinching);
+  dot.classList.toggle('pinching', !!grabbedBubbleEl);
 }
 
 function enableFallback(){
@@ -888,24 +892,28 @@ function handleGrabLogic(){
   const bubbles = [...field.querySelectorAll('.bubble:not(.removed-fifty)')];
   const px = cursorX*window.innerWidth, py = cursorY*window.innerHeight;
 
-  if(isPinching && !grabbedBubbleEl){
+  // ยังไม่ได้จับอะไรอยู่ -> ลองจับฟองที่ปลายนิ้วอยู่ใกล้ๆ (ไม่ต้องบีบนิ้ว แค่เอาปลายนิ้วไปแตะใกล้ๆ ก็จับติด)
+  if(!grabbedBubbleEl){
     for(const b of bubbles){
       const r = b.getBoundingClientRect();
-      if(px>r.left && px<r.right && py>r.top && py<r.bottom){
-        grabbedBubbleEl = b; b.classList.add('grabbed'); break;
+      const cx = r.left + r.width/2, cy = r.top + r.height/2;
+      const grabRadius = Math.max(r.width, r.height)/2 + 45; // เผื่อระยะให้จับง่ายขึ้นมาก
+      if(Math.hypot(px-cx, py-cy) < grabRadius){
+        grabbedBubbleEl = b; b.classList.add('grabbed');
+        break;
       }
     }
-  }
-  if(grabbedBubbleEl){
+  } else {
+    // ฟองที่จับไว้เกาะติดปลายนิ้วไปเรื่อยๆ
     grabbedBubbleEl.style.left = (cursorX*100 - 6)+'%';
     grabbedBubbleEl.style.top = (cursorY*100 - 4)+'%';
-    if(!isPinching){
-      const dz = document.getElementById('dropZone').getBoundingClientRect();
-      if(px>dz.left && px<dz.right && py>dz.top && py<dz.bottom){
-        answer(grabbedBubbleEl, grabbedBubbleEl.dataset.correct==='true');
-      } else {
-        grabbedBubbleEl.classList.remove('grabbed');
-      }
+
+    // เข้ากรอบวงกลมกลางจอ (ขยายใหญ่ให้ปล่อยง่าย) -> ตอบทันทีอัตโนมัติ ไม่ต้องปล่อยนิ้ว/บีบนิ้วเลย
+    const dz = document.getElementById('dropZone').getBoundingClientRect();
+    const dzCx = dz.left + dz.width/2, dzCy = dz.top + dz.height/2;
+    const dzRadius = Math.max(dz.width, dz.height)/2;
+    if(Math.hypot(px-dzCx, py-dzCy) < dzRadius){
+      answer(grabbedBubbleEl, grabbedBubbleEl.dataset.correct==='true');
       grabbedBubbleEl = null;
     }
   }
