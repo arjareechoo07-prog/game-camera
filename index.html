@@ -400,6 +400,7 @@
     <canvas id="handCanvas"></canvas>
     <div id="gameUI">
       <div id="topbar">
+        <div class="pill" id="btnExitLevel" style="cursor:pointer;">🏠 กลับหน้าหลัก</div>
         <div class="pill">💎 <span id="scoreVal">0</span></div>
         <div class="pill" id="levelName">ถ้ำ</div>
         <div class="pill">⏱ <span id="timerVal">10</span>s</div>
@@ -454,6 +455,7 @@
       <li>เปิดกล้องแล้วยกมือขึ้นให้เห็นในกรอบ ใช้ <b>นิ้วชี้</b> เล็งไปที่คำตอบ (มีจุดประกายทองตามนิ้ว)</li>
       <li>เอา <b>ปลายนิ้วชี้</b> ไปแตะใกล้ๆ ฟองคำตอบที่ต้องการ ฟองจะ "ติด" ที่ปลายนิ้วเองโดยไม่ต้องบีบนิ้ว</li>
       <li>เลื่อนมือพาฟองมาไว้ใน <b>วงกลมประที่ขยายใหญ่</b> กลางจอ พอฟองเข้าวงกลม ระบบจะ<b>ตอบให้อัตโนมัติทันที</b> ไม่ต้องบีบหรือปล่อยนิ้วเลย</li>
+      <li>ถ้าจับฟองผิดคำตอบ ให้เลื่อนปลายนิ้วไปใกล้ฟองอื่นแทนได้เลย ระบบจะปล่อยฟองเดิมคืนที่แล้วสลับให้จับฟองใหม่ทันที หรือเลื่อนนิ้วไปสุดขอบจอเพื่อวางฟองคืนที่โดยไม่ตอบ</li>
       <li>ถ้ากล้องใช้ไม่ได้ สามารถกด "ขอเล่นด้วยการแตะแทน" แล้วแตะคำตอบบนจอได้เลย</li>
       <li>ตอบถูกเร็วจะได้ <b>โบนัสเวลา</b> และถ้าตอบถูกติดกัน 3 ข้อขึ้นไปจะได้ <b>โบนัสคอมโบ</b></li>
       <li>ตอบถูกครบทุกข้อในด่าน จะได้ <b>โบนัสความสมบูรณ์แบบ +200</b></li>
@@ -556,7 +558,7 @@ let powerUps = { time:3, fifty:3, hint:3, multi:2 };
 let multiplierActive = false;
 let fiftyUsedThisQ = false, hintUsedThisQ = false;
 
-const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx8V6auDV0PliCXzt9bVcHTJyWkg4Vsu2R0YaO5ZweCYKH1GZhD7dHseSnDW2Nz7uaO/exec";
 
 function goTo(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -873,6 +875,8 @@ function showQuestion(){
     b.innerHTML = opt.t + '<span class="icon-badge">' + level.icons[i%level.icons.length] + '</span>';
     b.style.left = positions[i][0]+'%';
     b.style.top = positions[i][1]+'%';
+    b.dataset.origLeft = positions[i][0];
+    b.dataset.origTop = positions[i][1];
     b.dataset.correct = opt.correct;
     b.addEventListener('click', ()=>{ answer(b, opt.correct); });
     field.appendChild(b);
@@ -884,6 +888,12 @@ function showQuestion(){
     timeLeft--; document.getElementById('timerVal').textContent = timeLeft;
     if(timeLeft<=0){ clearInterval(questionTimer); answer(null,false); }
   },1000);
+}
+
+function releaseBubble(b){
+  b.classList.remove('grabbed');
+  b.style.left = (b.dataset.origLeft||50)+'%';
+  b.style.top = (b.dataset.origTop||50)+'%';
 }
 
 function handleGrabLogic(){
@@ -903,19 +913,41 @@ function handleGrabLogic(){
         break;
       }
     }
-  } else {
-    // ฟองที่จับไว้เกาะติดปลายนิ้วไปเรื่อยๆ
-    grabbedBubbleEl.style.left = (cursorX*100 - 6)+'%';
-    grabbedBubbleEl.style.top = (cursorY*100 - 4)+'%';
+    return;
+  }
 
-    // เข้ากรอบวงกลมกลางจอ (ขยายใหญ่ให้ปล่อยง่าย) -> ตอบทันทีอัตโนมัติ ไม่ต้องปล่อยนิ้ว/บีบนิ้วเลย
-    const dz = document.getElementById('dropZone').getBoundingClientRect();
-    const dzCx = dz.left + dz.width/2, dzCy = dz.top + dz.height/2;
-    const dzRadius = Math.max(dz.width, dz.height)/2;
-    if(Math.hypot(px-dzCx, py-dzCy) < dzRadius){
-      answer(grabbedBubbleEl, grabbedBubbleEl.dataset.correct==='true');
-      grabbedBubbleEl = null;
+  // กำลังจับฟองอยู่ -> ถ้าปลายนิ้วเลื่อนไปใกล้ฟองอื่นแทน ให้ปล่อยฟองเดิมคืนที่แล้วสลับไปจับฟองใหม่
+  for(const b of bubbles){
+    if(b === grabbedBubbleEl) continue;
+    const r = b.getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    const grabRadius = Math.max(r.width, r.height)/2 + 45;
+    if(Math.hypot(px-cx, py-cy) < grabRadius){
+      releaseBubble(grabbedBubbleEl);
+      grabbedBubbleEl = b; b.classList.add('grabbed');
+      return;
     }
+  }
+
+  // ฟองที่จับไว้เกาะติดปลายนิ้วไปเรื่อยๆ
+  grabbedBubbleEl.style.left = (cursorX*100 - 6)+'%';
+  grabbedBubbleEl.style.top = (cursorY*100 - 4)+'%';
+
+  // เลื่อนนิ้วไปสุดขอบจอ (ไม่ต้องการฟองนี้แล้ว) -> ปล่อยคืนที่เดิมโดยไม่ตอบ
+  const edgeMargin = 55;
+  if(px<edgeMargin || px>window.innerWidth-edgeMargin || py<edgeMargin || py>window.innerHeight-edgeMargin){
+    releaseBubble(grabbedBubbleEl);
+    grabbedBubbleEl = null;
+    return;
+  }
+
+  // เข้ากรอบวงกลมกลางจอ (ขยายใหญ่ให้ปล่อยง่าย) -> ตอบทันทีอัตโนมัติ ไม่ต้องบีบหรือปล่อยนิ้วเลย
+  const dz = document.getElementById('dropZone').getBoundingClientRect();
+  const dzCx = dz.left + dz.width/2, dzCy = dz.top + dz.height/2;
+  const dzRadius = Math.max(dz.width, dz.height)/2;
+  if(Math.hypot(px-dzCx, py-dzCy) < dzRadius){
+    answer(grabbedBubbleEl, grabbedBubbleEl.dataset.correct==='true');
+    grabbedBubbleEl = null;
   }
 }
 
@@ -946,6 +978,14 @@ function answer(bubbleEl, isCorrect){
   refreshPowerUI();
   currentQIdx++;
   setTimeout(showQuestion, isCorrect? 750 : 1600);
+}
+
+function exitLevel(){
+  if(!confirm('ออกจากด่านนี้ตอนนี้ คะแนนในด่านนี้จะไม่ถูกนับนะคะ ต้องการออกไปเลือกถ้ำใหม่ใช่ไหม?')) return;
+  clearInterval(questionTimer);
+  stopBgMusic();
+  grabbedBubbleEl = null;
+  goTo('screen-levels');
 }
 
 function finishLevel(){
@@ -1123,6 +1163,7 @@ function bindUIEvents(){
   on('pbHint','click', usePowerHint);
   on('pbMulti','click', usePowerMulti);
   on('btnBackToLevels','click', ()=>goTo('screen-levels'));
+  on('btnExitLevel','click', exitLevel);
   on('btnSubmitScore','click', submitTotalScore);
   on('ownerBtn','click', toggleOwnerMode);
   on('btnBackFromLeaderboard','click', ()=>goTo('screen-levels'));
