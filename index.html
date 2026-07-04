@@ -604,6 +604,22 @@ function playClickSound(){
   o.start(t); o.stop(t+0.13);
 }
 
+/* เสียงตอบสนองปุ่มกดทุกปุ่มตั้งแต่หน้าแรก (กรอกชื่อ) เป็นต้นไป ครอบคลุมทั้งกดเมาส์/แตะจอ/แตะด้วยมือผ่านกล้อง */
+document.addEventListener('click', function(e){
+  const el = e.target.closest('button, [data-action], .cave-node, .toggle-mode, .room-tab');
+  if(el){ ensureAudio(); playClickSound(); }
+}, true);
+
+/* เบราว์เซอร์กำหนดให้ต้องมีการโต้ตอบจริงของผู้ใช้ (แตะ/คลิก/กดปุ่ม) อย่างน้อยหนึ่งครั้งก่อนจึงจะอนุญาตให้เล่นเสียงได้
+   ฟังก์ชันนี้ช่วย "ปลดล็อก" เสียงทันทีที่มีการโต้ตอบจริงครั้งแรก แม้จะเริ่มเล่นด้วยท่ามือเป็นหลักก็ตาม */
+function unlockAudioOnce(){
+  ensureAudio();
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+}
+window.addEventListener('pointerdown', unlockAudioOnce, {once:true});
+window.addEventListener('touchstart', unlockAudioOnce, {once:true});
+window.addEventListener('keydown', unlockAudioOnce, {once:true});
+
 /* ================= BACKGROUND MUSIC (synth ambient loop) ================= */
 let musicGain = null, musicPads = [], musicArpTimer = null, musicMuted = false, bgMusicPlaying = false;
 const MUSIC_SCALE = [261.63,293.66,329.63,392.00,440.00,523.25]; // C D E G A C pentatonic-ish, soft & Thai-friendly
@@ -794,6 +810,7 @@ function onHandResults(results){
 
     // จุดเรืองแสงตามปลายนิ้วให้เห็นได้ทุกหน้าจอ (ตั้งแต่หน้ากรอกชื่อเป็นต้นไป)
     updateCursor();
+    runGlobalHandTouch(cursorX*window.innerWidth, cursorY*window.innerHeight);
     if(isGameActive) handleGrabLogic();
   } else {
     handVisible = false;
@@ -912,25 +929,23 @@ function releaseBubble(b){
   b.style.top = (b.dataset.origTop||50)+'%';
 }
 
-const powerTouchCooldown = {};
-function checkPowerButtonTouch(px, py){
+const handTouchCooldown = new WeakMap();
+function runGlobalHandTouch(px, py){
   const now = Date.now();
-  const buttons = [
-    {id:'pbTime', fn:usePowerTime},
-    {id:'pbFifty', fn:usePowerFifty},
-    {id:'pbHint', fn:usePowerHint},
-    {id:'pbMulti', fn:usePowerMulti},
-  ];
-  buttons.forEach(function(item){
-    const el = document.getElementById(item.id);
-    if(!el || el.disabled) return;
+  const selector = 'button, [data-action], .cave-node, .toggle-mode, .room-tab';
+  const els = document.querySelectorAll(selector);
+  els.forEach(function(el){
+    if(el.offsetParent === null) return; // ซ่อนอยู่ (อยู่ในหน้าจอที่ไม่ได้แสดง) ให้ข้ามไป
+    if(el.disabled) return;
     const r = el.getBoundingClientRect();
+    if(r.width===0 || r.height===0) return;
     const cx = r.left + r.width/2, cy = r.top + r.height/2;
-    const radius = Math.max(r.width, r.height)/2 + 22;
+    const radius = Math.max(r.width, r.height)/2 + 18;
     if(Math.hypot(px-cx, py-cy) < radius){
-      if(!powerTouchCooldown[item.id] || now > powerTouchCooldown[item.id]){
-        item.fn();
-        powerTouchCooldown[item.id] = now + 900;
+      const until = handTouchCooldown.get(el) || 0;
+      if(now > until){
+        el.click();
+        handTouchCooldown.set(el, now+900);
         el.classList.add('touched-glow');
         setTimeout(()=>el.classList.remove('touched-glow'), 300);
       }
@@ -943,8 +958,6 @@ function handleGrabLogic(){
   const field = document.getElementById('bubbleField');
   const bubbles = [...field.querySelectorAll('.bubble:not(.removed-fifty)')];
   const px = cursorX*window.innerWidth, py = cursorY*window.innerHeight;
-
-  checkPowerButtonTouch(px, py);
 
   // ยังไม่ได้จับอะไรอยู่ -> ลองจับฟองที่ปลายนิ้วอยู่ใกล้ๆ (ไม่ต้องบีบนิ้ว แค่เอาปลายนิ้วไปแตะใกล้ๆ ก็จับติด)
   if(!grabbedBubbleEl){
@@ -1250,6 +1263,7 @@ safeRun(()=>{
 }, 'spawnBubbles');
 safeRun(renderLevels, 'renderLevels');
 safeRun(initHands, 'initHands');
+safeRun(ensureAudio, 'ensureAudio');
 </script>
 </body>
 </html>
