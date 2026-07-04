@@ -1190,8 +1190,10 @@ function submitTotalScore(){
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify(payload)
-  }).then(r=>r.json()).then(()=>{ goTo('screen-leaderboard'); loadLeaderboard(); })
-    .catch(()=>alert('ส่งคะแนนไม่สำเร็จ ลองใหม่อีกครั้งนะคะ'));
+  }).then(r=>r.json()).then(res=>{
+    if(res && res.error){ alert('ส่งคะแนนไม่สำเร็จ (เซิร์ฟเวอร์แจ้งว่า: '+res.message+')\n\nโปรดแจ้งครูอาจารีให้ตรวจสอบค่า SPREADSHEET_ID ในไฟล์ Code.gs ว่าใส่ถูกต้องหรือยัง'); return; }
+    goTo('screen-leaderboard'); loadLeaderboard();
+  }).catch(()=>alert('ส่งคะแนนไม่สำเร็จ (เชื่อมต่อเซิร์ฟเวอร์ไม่ได้) ลองใหม่อีกครั้งนะคะ'));
 }
 
 function renderRoomTabs(){
@@ -1233,6 +1235,10 @@ function loadLeaderboard(){
   fetch(APPS_SCRIPT_URL+'?action=getLeaderboard&room='+encodeURIComponent(currentRoomFilter))
     .then(r=>r.json())
     .then(list=>{
+      if(list && list.error){
+        body.innerHTML = '<tr><td colspan="6">โหลดไม่สำเร็จ — เซิร์ฟเวอร์แจ้งว่า: '+list.message+'<br>(โปรดตรวจสอบค่า SPREADSHEET_ID ในไฟล์ Code.gs)</td></tr>';
+        return;
+      }
       body.innerHTML = list.slice(0,50).map((row,i)=>{
         let ownerCell = '';
         if(ownerMode){
