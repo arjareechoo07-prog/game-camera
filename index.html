@@ -215,9 +215,15 @@
   .power-btn.active-glow{border-color:var(--gold);box-shadow:0 0 14px var(--gold);}
   .power-btn.touched-glow{border-color:var(--jade);box-shadow:0 0 18px var(--jade);transform:scale(1.08);}
   #questionBox{
-    background:#fff;margin:6px auto;padding:20px 30px;border-radius:24px;max-width:640px;
-    box-shadow:0 10px 24px rgba(107,78,142,.18);font-family:'Kanit',sans-serif;font-weight:600;font-size:clamp(18px,3vw,24px);
+    background:var(--plum);color:#fff;margin:6px auto;padding:20px 30px;border-radius:24px;max-width:640px;
+    box-shadow:0 10px 24px rgba(107,78,142,.25);font-family:'Kanit',sans-serif;font-weight:700;font-size:clamp(18px,3vw,24px);
+    border:3px solid rgba(255,255,255,.5);
   }
+  #questionBox.qbox-noun{background:#E85D3D;}
+  #questionBox.qbox-verb{background:#1FAE86;}
+  #questionBox.qbox-pronoun{background:#C97A00;}
+  #questionBox.qbox-monk{background:#6B3FA0;}
+  #questionBox.qbox-polite{background:#D94A7A;}
   #bubbleField{flex:1;position:relative;z-index:5;}
   .bubble{
     position:absolute;padding:16px 22px;border-radius:26px;font-family:'Kanit',sans-serif;font-weight:700;
@@ -271,7 +277,12 @@
     background:rgba(255,255,255,.55);position:relative;z-index:5;
   }
 
-  .footer-credit{position:relative;z-index:2;margin-top:18px;margin-bottom:16px;font-size:12.5px;color:#8a7fa3;font-family:'Sarabun',sans-serif;line-height:1.6;}
+  .footer-credit{
+    position:relative;z-index:2;margin-top:18px;margin-bottom:16px;
+    font-size:13.5px;font-weight:700;color:var(--plum-dark);
+    font-family:'Kanit',sans-serif;line-height:1.9;
+    text-shadow:0 0 8px var(--gold), 0 0 16px rgba(255,201,74,.6), 0 1px 0 #fff;
+  }
 
   /* จอเตี้ย/มือถือ: ย่อส่วนหัว-ปุ่มการ์ดพลัง-กรอบคำถาม-วงกลมตอบ ให้เล็กลง
      เพื่อให้เหลือพื้นที่พอสำหรับฟองคำตอบทั้ง 4 ข้อ มองเห็นครบโดยไม่ต้องเลื่อนจอ */
@@ -375,8 +386,10 @@
     </div>
 
     <div class="footer-credit content-layer">
-      พัฒนาโดย นางสาวอาจารี ชูสุวรรณ วิทยฐานะครูชำนาญการพิเศษ<br>
-      กลุ่มสาระการเรียนรู้ภาษาไทย โรงเรียนกระทุ่มแบน "วิเศษสมุทคุณ"
+      <div>ผู้พัฒนาเกม : นางสาวอาจารี ชูสุวรรณ</div>
+      <div>วิทยฐานะครูชำนาญการพิเศษ</div>
+      <div>กลุ่มสาระการเรียนรู้ภาษาไทย</div>
+      <div>โรงเรียนกระทุ่มแบน "วิเศษสมุทคุณ"</div>
     </div>
   </div>
 
@@ -975,6 +988,7 @@ function startLevel(idx){
   const level = LEVELS[idx];
   document.getElementById('levelName').textContent = level.emoji+' '+level.name;
   document.getElementById('gameBgLayer').className = 'game-bg-'+level.id;
+  document.getElementById('questionBox').className = 'qbox-'+level.id;
   document.documentElement.style.setProperty('--level-glow', LEVEL_GLOW[level.id] || '#ffffff');
   spawnBubbles('gameBubbleBg', 14, ['--gold','--rose','--jade','--sky']);
   spawnIcons('gameIconBg', level.icons);
