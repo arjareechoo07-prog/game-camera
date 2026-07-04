@@ -283,7 +283,10 @@
   .room-tab{padding:6px 14px;border-radius:999px;background:#fff;border:2px solid #E4DAF0;font-family:'Kanit',sans-serif;font-size:13px;cursor:pointer;}
   .room-tab.active{background:var(--plum);color:#fff;border-color:var(--plum);}
 
-  .owner-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .owner-bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;justify-content:center;}
+  .admin-qrow{background:#FBF7FF;border-radius:14px;padding:10px;margin-bottom:8px;}
+  .admin-qrow input{width:100%;margin:3px 0;font-size:14px;padding:8px 10px;}
+  .admin-qrow .qrow-actions{display:flex;gap:8px;margin-top:4px;}
 
   /* Score popup + flash overlay */
   .score-popup{position:fixed;font-family:'Kanit',sans-serif;font-weight:800;font-size:24px;pointer-events:none;z-index:60;animation:popUp .9s ease-out forwards;text-shadow:0 2px 6px rgba(0,0,0,.25);}
@@ -408,10 +411,10 @@
         <div class="pill" id="musicToggleBtn" style="cursor:pointer;">🔊</div>
       </div>
       <div id="powerBar">
-        <button class="power-btn" id="pbTime">⏰ เวลาพิเศษ <span class="badge" id="cntTime">3</span></button>
-        <button class="power-btn" id="pbFifty">✂️ ตัดตัวเลือก <span class="badge" id="cntFifty">3</span></button>
-        <button class="power-btn" id="pbHint">💡 ใบ้คำตอบ <span class="badge" id="cntHint">3</span></button>
-        <button class="power-btn" id="pbMulti">⭐ คะแนนคูณ 2 <span class="badge" id="cntMulti">2</span></button>
+        <button class="power-btn" id="pbTime"><span id="lblTime">⏰ เวลาพิเศษ</span> <span class="badge" id="cntTime">3</span></button>
+        <button class="power-btn" id="pbFifty"><span id="lblFifty">✂️ ตัดตัวเลือก</span> <span class="badge" id="cntFifty">3</span></button>
+        <button class="power-btn" id="pbHint"><span id="lblHint">💡 ใบ้คำตอบ</span> <span class="badge" id="cntHint">3</span></button>
+        <button class="power-btn" id="pbMulti"><span id="lblMulti">⭐ คะแนนคูณ 2</span> <span class="badge" id="cntMulti">2</span></button>
       </div>
       <div id="questionBox">คำถาม</div>
       <div id="dropZone">วางที่นี่เพื่อตอบ</div>
@@ -425,8 +428,9 @@
       <div id="resultStars" style="font-size:48px;color:var(--gold-deep);"></div>
       <p class="sub">คะแนนด่านนี้: <b id="resultScore">0</b></p>
       <p class="sub" id="perfectNote" style="display:none;color:var(--gold-deep);font-weight:700;">✨ โบนัสตอบถูกครบทุกข้อ +200!</p>
+      <p class="sub" id="resultTotalScore" style="display:none;">💎 คะแนนสะสมรวมตอนนี้: <b id="resultTotalScoreVal">0</b></p>
       <button class="btn gold" id="btnBackToLevels">กลับไปเลือกถ้ำ</button>
-      <button class="btn" id="btnSubmitScore">ส่งคะแนนรวมขึ้นลีดเดอร์บอร์ด 🏆</button>
+      <button class="btn" id="btnSubmitScore" style="display:none;">ส่งคะแนนรวมขึ้นลีดเดอร์บอร์ด 🏆</button>
     </div>
   </div>
 
@@ -436,6 +440,7 @@
       <div class="room-tabs" id="roomTabs"></div>
       <div class="owner-bar">
         <button class="btn small ghost" id="ownerBtn">🔧 โหมดเจ้าของ</button>
+        <button class="btn small gold" id="btnOpenAdmin" style="display:none;">📝 แก้ไขคำถาม/การ์ดพลัง</button>
       </div>
       <table class="lead" id="leadTable">
         <thead><tr><th>#</th><th>ชื่อ-สกุล</th><th>เลขที่</th><th>ห้อง</th><th>คะแนน</th><th id="ownerColHead" style="display:none;">จัดการ</th></tr></thead>
@@ -451,7 +456,7 @@
 <div class="modal-overlay" id="howToModal">
   <div class="modal-box">
     <h2>❓ วิธีเล่นเกม</h2>
-    <ul>
+    <ul id="howToList">
       <li>เปิดกล้องแล้วยกมือขึ้นให้เห็นในกรอบ ใช้ <b>นิ้วชี้</b> เล็งไปที่คำตอบ (มีจุดประกายทองตามนิ้ว)</li>
       <li>เอา <b>ปลายนิ้วชี้</b> ไปแตะใกล้ๆ ฟองคำตอบที่ต้องการ ฟองจะ "ติด" ที่ปลายนิ้วเองโดยไม่ต้องบีบนิ้ว</li>
       <li>เลื่อนมือพาฟองมาไว้ใน <b>วงกลมประที่ขยายใหญ่</b> กลางจอ พอฟองเข้าวงกลม ระบบจะ<b>ตอบให้อัตโนมัติทันที</b> ไม่ต้องบีบหรือปล่อยนิ้วเลย</li>
@@ -462,11 +467,56 @@
     </ul>
     <h3>การ์ดพลังช่วยเหลือ (ใช้ได้จำกัดต่อด่าน)</h3>
     <p style="font-size:13px;color:#7a5aa8;margin-top:-4px;">ถ้าเล่นด้วยมือ สามารถเอาปลายนิ้วไปแตะที่ปุ่มการ์ดพลังโดยตรงเพื่อใช้งานได้เลย ไม่ต้องใช้เมาส์</p>
-    <div class="power-explain"><span class="ic">⏰</span> เวลาพิเศษ — เพิ่มเวลา 10 วินาทีในข้อนั้น</div>
-    <div class="power-explain"><span class="ic">✂️</span> ตัดตัวเลือก — ตัดคำตอบผิดออก 2 ตัวเลือก</div>
-    <div class="power-explain"><span class="ic">💡</span> ใบ้คำตอบ — ฟองคำตอบที่ถูกจะเรืองแสงชั่วครู่</div>
-    <div class="power-explain"><span class="ic">⭐</span> คะแนนคูณ 2 — คำตอบถัดไปได้คะแนนเป็น 2 เท่า</div>
+    <div id="powerExplainList">
+      <div class="power-explain"><span class="ic">⏰</span> เวลาพิเศษ — เพิ่มเวลา 10 วินาทีในข้อนั้น</div>
+      <div class="power-explain"><span class="ic">✂️</span> ตัดตัวเลือก — ตัดคำตอบผิดออก 2 ตัวเลือก</div>
+      <div class="power-explain"><span class="ic">💡</span> ใบ้คำตอบ — ฟองคำตอบที่ถูกจะเรืองแสงชั่วครู่</div>
+      <div class="power-explain"><span class="ic">⭐</span> คะแนนคูณ 2 — คำตอบถัดไปได้คะแนนเป็น 2 เท่า</div>
+    </div>
     <button class="btn gold" id="btnCloseHowTo" style="width:100%;">เข้าใจแล้ว เริ่มเล่นเลย!</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="adminModal">
+  <div class="modal-box" style="max-width:680px;">
+    <h2>📝 แผงจัดการของเจ้าของ (ครู)</h2>
+
+    <h3>เลือกถ้ำที่จะแก้ไขคำถาม</h3>
+    <select id="adminLevelSelect" style="width:100%;margin-bottom:12px;"></select>
+    <div id="adminQuestionList"></div>
+
+    <div class="admin-qform" id="adminNewQForm">
+      <h4 style="margin:14px 0 6px;">+ เพิ่มคำถามใหม่ในถ้ำนี้</h4>
+      <input type="text" id="newQQuestion" placeholder="โจทย์คำถาม">
+      <input type="text" id="newQCorrect" placeholder="คำตอบที่ถูก">
+      <input type="text" id="newQWrong1" placeholder="ตัวลวง 1">
+      <input type="text" id="newQWrong2" placeholder="ตัวลวง 2">
+      <input type="text" id="newQWrong3" placeholder="ตัวลวง 3">
+      <button class="btn small gold" id="btnAddQuestion">+ เพิ่มคำถามนี้</button>
+    </div>
+
+    <button class="btn small ghost" id="btnSeedQuestions" style="width:100%;margin-top:10px;">🌱 นำคำถามชุดเริ่มต้นขึ้น Google Sheet (ทำครั้งแรกครั้งเดียว)</button>
+
+    <hr style="margin:20px 0;border:none;border-top:1px solid #eee;">
+
+    <h3>แก้ไขข้อความวิธีเล่น (แต่ละบรรทัด = 1 ข้อ)</h3>
+    <textarea id="adminHowToText" rows="6" style="width:100%;font-family:'Sarabun',sans-serif;padding:10px;border-radius:12px;border:2px solid #E4DAF0;"></textarea>
+
+    <h3 style="margin-top:14px;">แก้ไขคำอธิบายการ์ดพลัง (แต่ละบรรทัด = 1 การ์ด)</h3>
+    <textarea id="adminPowerText" rows="4" style="width:100%;font-family:'Sarabun',sans-serif;padding:10px;border-radius:12px;border:2px solid #E4DAF0;"></textarea>
+
+    <h3 style="margin-top:14px;">แก้ไขชื่อปุ่มการ์ดพลัง</h3>
+    <div class="form-row" style="justify-content:flex-start;">
+      <input type="text" id="adminLabelTime" placeholder="⏰ เวลาพิเศษ">
+      <input type="text" id="adminLabelFifty" placeholder="✂️ ตัดตัวเลือก">
+    </div>
+    <div class="form-row" style="justify-content:flex-start;">
+      <input type="text" id="adminLabelHint" placeholder="💡 ใบ้คำตอบ">
+      <input type="text" id="adminLabelMulti" placeholder="⭐ คะแนนคูณ 2">
+    </div>
+
+    <button class="btn gold" id="btnSaveSettings" style="width:100%;margin-top:12px;">💾 บันทึกข้อความทั้งหมด</button>
+    <button class="btn ghost" id="btnCloseAdmin" style="width:100%;">ปิดหน้าต่างนี้</button>
   </div>
 </div>
 
@@ -741,6 +791,9 @@ function submitLogin(){
   player.name = prefix + first + ' ' + last;
   player.room = document.getElementById('inputRoom').value;
   player.no = Number(document.getElementById('inputNo').value) || 1;
+  totalScore = 0;
+  completedLevels.clear();
+  Object.keys(levelStars).forEach(k=>delete levelStars[k]);
   goTo('screen-camera');
   initHands();
 }
@@ -901,6 +954,7 @@ const LEVEL_GLOW = { noun:'#FF9F6B', verb:'#3DDCA6', pronoun:'#FFC94A', monk:'#C
 function startLevel(idx){
   currentLevelIdx = idx; currentQIdx = 0; levelScore = 0; streak = 0; wrongCountThisLevel = 0;
   powerUps = { time:3, fifty:3, hint:3, multi:2 }; multiplierActive = false;
+  document.getElementById('scoreVal').textContent = totalScore;
   const level = LEVELS[idx];
   document.getElementById('levelName').textContent = level.emoji+' '+level.name;
   document.getElementById('gameBgLayer').className = 'game-bg-'+level.id;
@@ -1056,7 +1110,7 @@ function answer(bubbleEl, isCorrect){
     const correctBubble = document.querySelector('#bubbleField .bubble[data-correct="true"]');
     if(correctBubble && correctBubble!==bubbleEl) correctBubble.classList.add('reveal-correct');
   }
-  document.getElementById('scoreVal').textContent = levelScore;
+  document.getElementById('scoreVal').textContent = totalScore + levelScore;
   refreshPowerUI();
   currentQIdx++;
   setTimeout(showQuestion, isCorrect? 750 : 1600);
@@ -1079,11 +1133,20 @@ function finishLevel(){
   const maxScore = level.questions.length*160 + 200;
   const ratio = levelScore/maxScore;
   const stars = ratio>0.8? 3 : ratio>0.5? 2 : 1;
-  document.getElementById('resultTitle').textContent = level.emoji+' ผ่าน '+level.name+' แล้ว!';
+  completedLevels.add(level.id);
+  const allDone = completedLevels.size >= LEVELS.length;
+
+  document.getElementById('resultTitle').textContent = allDone
+    ? '🎉 ผ่านครบทั้ง 5 ถ้ำแล้ว!'
+    : (level.emoji+' ผ่าน '+level.name+' แล้ว!');
   document.getElementById('resultStars').textContent = '⭐'.repeat(stars)+'☆'.repeat(3-stars);
   document.getElementById('resultScore').textContent = levelScore;
   document.getElementById('perfectNote').style.display = perfect? 'block':'none';
-  completedLevels.add(level.id);
+  document.getElementById('resultTotalScore').style.display = 'block';
+  document.getElementById('resultTotalScoreVal').textContent = totalScore;
+  document.getElementById('btnSubmitScore').style.display = allDone ? 'inline-block' : 'none';
+  document.getElementById('btnBackToLevels').textContent = allDone ? 'ดูแผนที่ถ้ำอีกครั้ง' : 'ไปถ้ำถัดไป';
+
   renderLevels(level.id, stars);
   goTo('screen-result');
 }
@@ -1156,6 +1219,7 @@ function toggleOwnerMode(){
     document.getElementById('ownerBtn').textContent = '🔧 โหมดเจ้าของ';
   }
   document.getElementById('ownerColHead').style.display = ownerMode? '':'none';
+  document.getElementById('btnOpenAdmin').style.display = ownerMode? 'inline-block':'none';
   loadLeaderboard();
 }
 
@@ -1208,6 +1272,207 @@ function deleteScore(room, ts){
 }
 
 /* =================================================================
+   เนื้อหาที่ดึงจาก Google Sheet: คำถามแต่ละถ้ำ + ข้อความวิธีเล่น/การ์ดพลัง
+   ถ้าเชื่อมต่อไม่ได้ (ยังไม่ตั้งค่า APPS_SCRIPT_URL หรือออฟไลน์) เกมจะใช้ชุดคำถาม
+   และข้อความที่มีอยู่ในโค้ดนี้เป็นค่าเริ่มต้นแทน ไม่กระทบการเล่น
+================================================================= */
+let remoteQuestionsByLevel = {}; // levelId -> [{id, question, correct, wrong1, wrong2, wrong3, order}, ...]
+
+function isBackendConnected(){ return !APPS_SCRIPT_URL.startsWith('PASTE_'); }
+
+function fetchRemoteQuestions(){
+  if(!isBackendConnected()) return;
+  fetch(APPS_SCRIPT_URL+'?action=getQuestions')
+    .then(r=>r.json())
+    .then(list=>{
+      if(!Array.isArray(list) || list.length===0) return;
+      const byLevel = {};
+      list.forEach(q=>{ (byLevel[q.levelId] = byLevel[q.levelId]||[]).push(q); });
+      remoteQuestionsByLevel = byLevel;
+      LEVELS.forEach(level=>{
+        const rows = byLevel[level.id];
+        if(rows && rows.length>0){
+          level.questions = rows.map(r=>({
+            q:r.question, a:r.correct, d:[r.wrong1,r.wrong2,r.wrong3].filter(Boolean)
+          }));
+        }
+      });
+    })
+    .catch(()=>{ /* ใช้ชุดคำถามเริ่มต้นในโค้ดต่อไปตามปกติ */ });
+}
+
+function fetchRemoteSettings(){
+  if(!isBackendConnected()) return;
+  fetch(APPS_SCRIPT_URL+'?action=getSettings')
+    .then(r=>r.json())
+    .then(applySettingsToUI)
+    .catch(()=>{});
+}
+
+function applySettingsToUI(settings){
+  if(!settings) return;
+  if(settings.howto_text){
+    const ul = document.getElementById('howToList');
+    if(ul) ul.innerHTML = settings.howto_text.split('\n').filter(Boolean).map(line=>'<li>'+line+'</li>').join('');
+  }
+  if(settings.power_text){
+    const wrap = document.getElementById('powerExplainList');
+    if(wrap) wrap.innerHTML = settings.power_text.split('\n').filter(Boolean).map(line=>'<div class="power-explain">'+line+'</div>').join('');
+  }
+  if(settings.power_label_time){ const el=document.getElementById('lblTime'); if(el) el.textContent = settings.power_label_time; }
+  if(settings.power_label_fifty){ const el=document.getElementById('lblFifty'); if(el) el.textContent = settings.power_label_fifty; }
+  if(settings.power_label_hint){ const el=document.getElementById('lblHint'); if(el) el.textContent = settings.power_label_hint; }
+  if(settings.power_label_multi){ const el=document.getElementById('lblMulti'); if(el) el.textContent = settings.power_label_multi; }
+}
+
+/* =================================================================
+   แผงจัดการของเจ้าของ (ครู): แก้ไข/เพิ่ม/ลบคำถาม และข้อความวิธีเล่น/การ์ดพลัง
+================================================================= */
+function openAdminPanel(){
+  if(!isBackendConnected()){
+    alert('ยังไม่ได้เชื่อมต่อ Google Sheet — โปรด deploy Apps Script backend แล้วใส่ URL ในโค้ดก่อนค่ะ (ดูไฟล์ Code.gs)');
+    return;
+  }
+  const sel = document.getElementById('adminLevelSelect');
+  sel.innerHTML = LEVELS.map(lv=>'<option value="'+lv.id+'">'+lv.emoji+' '+lv.name+'</option>').join('');
+  renderAdminQuestionList(sel.value);
+
+  // โหลดข้อความปัจจุบันมาใส่ในฟอร์มแก้ไข
+  fetch(APPS_SCRIPT_URL+'?action=getSettings').then(r=>r.json()).then(settings=>{
+    document.getElementById('adminHowToText').value = settings.howto_text || document.getElementById('howToList').innerText.split('\n').filter(Boolean).join('\n');
+    document.getElementById('adminPowerText').value = settings.power_text || [...document.querySelectorAll('#powerExplainList .power-explain')].map(d=>d.textContent.trim()).join('\n');
+    document.getElementById('adminLabelTime').value = settings.power_label_time || document.getElementById('lblTime').textContent;
+    document.getElementById('adminLabelFifty').value = settings.power_label_fifty || document.getElementById('lblFifty').textContent;
+    document.getElementById('adminLabelHint').value = settings.power_label_hint || document.getElementById('lblHint').textContent;
+    document.getElementById('adminLabelMulti').value = settings.power_label_multi || document.getElementById('lblMulti').textContent;
+  });
+
+  document.getElementById('adminModal').classList.add('active');
+}
+function closeAdminPanel(){ document.getElementById('adminModal').classList.remove('active'); }
+
+function renderAdminQuestionList(levelId){
+  const wrap = document.getElementById('adminQuestionList');
+  const rows = remoteQuestionsByLevel[levelId];
+  if(!rows || rows.length===0){
+    wrap.innerHTML = '<p class="sub" style="font-size:13px;">ยังไม่มีคำถามในชีตสำหรับถ้ำนี้ — กด "นำคำถามชุดเริ่มต้นขึ้น Google Sheet" ด้านล่างก่อน แล้วเปิดแผงนี้ใหม่อีกครั้ง</p>';
+    return;
+  }
+  wrap.innerHTML = '';
+  rows.forEach(q=>{
+    const row = document.createElement('div');
+    row.className = 'admin-qrow';
+    row.innerHTML =
+      '<input type="text" data-f="question" value="'+escapeAttr_(q.question)+'" placeholder="โจทย์คำถาม">'+
+      '<input type="text" data-f="correct" value="'+escapeAttr_(q.correct)+'" placeholder="คำตอบที่ถูก" style="border-color:#3DDCA6;">'+
+      '<input type="text" data-f="wrong1" value="'+escapeAttr_(q.wrong1)+'" placeholder="ตัวลวง 1">'+
+      '<input type="text" data-f="wrong2" value="'+escapeAttr_(q.wrong2)+'" placeholder="ตัวลวง 2">'+
+      '<input type="text" data-f="wrong3" value="'+escapeAttr_(q.wrong3)+'" placeholder="ตัวลวง 3">'+
+      '<div class="qrow-actions">'+
+        '<button class="btn small gold" data-qaction="save" data-id="'+q.id+'">💾 บันทึก</button>'+
+        '<button class="btn small" style="background:#e05a5a;box-shadow:none;" data-qaction="delete" data-id="'+q.id+'">🗑️ ลบ</button>'+
+      '</div>';
+    wrap.appendChild(row);
+  });
+}
+function escapeAttr_(s){ return String(s||'').replace(/"/g,'&quot;'); }
+
+document.addEventListener('click', function(e){
+  const saveBtn = e.target.closest('[data-qaction="save"]');
+  const delBtn = e.target.closest('[data-qaction="delete"]');
+  if(saveBtn){
+    const row = saveBtn.closest('.admin-qrow');
+    const get = f => row.querySelector('[data-f="'+f+'"]').value.trim();
+    fetch(APPS_SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({
+        action:'adminUpdateQuestion', id:saveBtn.dataset.id,
+        question:get('question'), correct:get('correct'), wrong1:get('wrong1'), wrong2:get('wrong2'), wrong3:get('wrong3'),
+        passcode:window.__ownerPass
+      })
+    }).then(r=>r.json()).then(res=>{
+      if(res.status!=='ok'){ alert('บันทึกไม่สำเร็จ: '+(res.message||'')); return; }
+      fetchRemoteQuestions();
+      alert('บันทึกคำถามแล้วค่ะ');
+    });
+  }
+  if(delBtn){
+    if(!confirm('ลบคำถามข้อนี้ใช่ไหมคะ?')) return;
+    fetch(APPS_SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({ action:'adminDeleteQuestion', id:delBtn.dataset.id, passcode:window.__ownerPass })
+    }).then(r=>r.json()).then(res=>{
+      if(res.status!=='ok'){ alert('ลบไม่สำเร็จ: '+(res.message||'')); return; }
+      fetchRemoteQuestions();
+      setTimeout(()=>renderAdminQuestionList(document.getElementById('adminLevelSelect').value), 500);
+    });
+  }
+});
+
+function addNewQuestion(){
+  const levelId = document.getElementById('adminLevelSelect').value;
+  const question = document.getElementById('newQQuestion').value.trim();
+  const correct = document.getElementById('newQCorrect').value.trim();
+  const wrong1 = document.getElementById('newQWrong1').value.trim();
+  const wrong2 = document.getElementById('newQWrong2').value.trim();
+  const wrong3 = document.getElementById('newQWrong3').value.trim();
+  if(!question || !correct || !wrong1 || !wrong2 || !wrong3){
+    alert('กรอกให้ครบทุกช่องก่อนนะคะ (โจทย์ + คำตอบที่ถูก + ตัวลวง 3 ตัว)');
+    return;
+  }
+  fetch(APPS_SCRIPT_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({ action:'adminAddQuestion', levelId, question, correct, wrong1, wrong2, wrong3, passcode:window.__ownerPass })
+  }).then(r=>r.json()).then(res=>{
+    if(res.status!=='ok'){ alert('เพิ่มไม่สำเร็จ: '+(res.message||'')); return; }
+    ['newQQuestion','newQCorrect','newQWrong1','newQWrong2','newQWrong3'].forEach(id=>document.getElementById(id).value='');
+    fetchRemoteQuestions();
+    setTimeout(()=>renderAdminQuestionList(levelId), 500);
+  });
+}
+
+function seedQuestionsToSheet(){
+  if(!confirm('นำคำถามชุดเริ่มต้น (ที่มากับเกม) ขึ้น Google Sheet ใช่ไหมคะ? ทำได้แค่ตอนที่ชีตยังว่างอยู่เท่านั้น')) return;
+  const payload = [];
+  LEVELS.forEach(level=>{
+    level.questions.forEach((q,i)=>{
+      payload.push({
+        id: level.id+'_seed_'+i, levelId: level.id, question:q.q, correct:q.a,
+        wrong1:q.d[0]||'', wrong2:q.d[1]||'', wrong3:q.d[2]||'', order:i
+      });
+    });
+  });
+  fetch(APPS_SCRIPT_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({ action:'adminSeedQuestions', questions:payload, passcode:window.__ownerPass })
+  }).then(r=>r.json()).then(res=>{
+    if(res.status!=='ok'){ alert('ทำไม่สำเร็จ: '+(res.message||'')); return; }
+    alert('นำคำถามขึ้นชีตเรียบร้อยแล้วค่ะ กำลังโหลดใหม่...');
+    fetchRemoteQuestions();
+    setTimeout(()=>renderAdminQuestionList(document.getElementById('adminLevelSelect').value), 600);
+  });
+}
+
+function saveAdminSettings(){
+  const settings = {
+    howto_text: document.getElementById('adminHowToText').value,
+    power_text: document.getElementById('adminPowerText').value,
+    power_label_time: document.getElementById('adminLabelTime').value,
+    power_label_fifty: document.getElementById('adminLabelFifty').value,
+    power_label_hint: document.getElementById('adminLabelHint').value,
+    power_label_multi: document.getElementById('adminLabelMulti').value,
+  };
+  fetch(APPS_SCRIPT_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({ action:'adminUpdateSettings', settings, passcode:window.__ownerPass })
+  }).then(r=>r.json()).then(res=>{
+    if(res.status!=='ok'){ alert('บันทึกไม่สำเร็จ: '+(res.message||'')); return; }
+    applySettingsToUI(settings);
+    alert('บันทึกข้อความเรียบร้อยแล้วค่ะ นักเรียนที่เปิดเกมใหม่จะเห็นข้อความนี้ทันที');
+  });
+}
+
+/* =================================================================
    ผูกอีเวนต์ทั้งหมดด้วย addEventListener แทนแอตทริบิวต์ onclick="" ในตัว HTML
    เพราะบางสภาพแวดล้อม (เช่น iframe แซนด์บ็อกซ์ของ Google Apps Script)
    อาจปิดกั้นการทำงานของแอตทริบิวต์ onclick ด้วยนโยบายความปลอดภัยของหน้าเว็บ
@@ -1250,6 +1515,12 @@ function bindUIEvents(){
   on('ownerBtn','click', toggleOwnerMode);
   on('btnBackFromLeaderboard','click', ()=>goTo('screen-levels'));
   on('btnCloseHowTo','click', closeHowTo);
+  on('btnOpenAdmin','click', openAdminPanel);
+  on('btnCloseAdmin','click', closeAdminPanel);
+  on('btnAddQuestion','click', addNewQuestion);
+  on('btnSeedQuestions','click', seedQuestionsToSheet);
+  on('btnSaveSettings','click', saveAdminSettings);
+  on('adminLevelSelect','change', function(){ renderAdminQuestionList(this.value); });
 
   // event delegation สำหรับปุ่มแก้ไข/ลบในตารางลีดเดอร์บอร์ด (สร้างแบบไดนามิกด้วย innerHTML)
   const leadBody = document.getElementById('leadBody');
@@ -1289,6 +1560,8 @@ safeRun(()=>{
 safeRun(renderLevels, 'renderLevels');
 safeRun(initHands, 'initHands');
 safeRun(ensureAudio, 'ensureAudio');
+safeRun(fetchRemoteQuestions, 'fetchRemoteQuestions');
+safeRun(fetchRemoteSettings, 'fetchRemoteSettings');
 </script>
 </body>
 </html>
