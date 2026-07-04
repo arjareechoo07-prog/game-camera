@@ -753,7 +753,7 @@ async function initHands(){
   const videoEl = document.getElementById('videoCalib');
   try{
     handsInstance = new Hands({locateFile:function(f){ return 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f; }});
-    handsInstance.setOptions({maxNumHands:1,modelComplexity:1,minDetectionConfidence:0.6,minTrackingConfidence:0.6});
+    handsInstance.setOptions({maxNumHands:2,modelComplexity:1,minDetectionConfidence:0.6,minTrackingConfidence:0.6});
     handsInstance.onResults(onHandResults);
 
     cameraInstance = new Camera(videoEl,{
@@ -770,6 +770,9 @@ async function initHands(){
       if(gameVideo && videoEl.srcObject){
         gameVideo.srcObject = videoEl.srcObject;
         gameVideo.play().catch(()=>{});
+        if(document.getElementById('screen-game').classList.contains('active')){
+          gameVideo.style.display = 'block';
+        }
       }
     }catch(e){ console.warn('share stream to game video failed', e); }
   }catch(err){
@@ -777,6 +780,28 @@ async function initHands(){
     enableFallback();
   }
   handsInitInFlight = false;
+}
+
+/* เลือกเฉพาะมือที่ "ใหญ่ที่สุด" ในเฟรม (แปลว่าอยู่ใกล้กล้องที่สุด) เพื่อโฟกัสที่ผู้เล่นจริง
+   หน้าจอ ไม่ให้กระโดดไปติดตามมือของคนอื่นที่เดินผ่านด้านหลังซึ่งจะดูเล็กกว่าเสมอ */
+let lastHandSize = 0;
+function handBoxSize(lm){
+  let minX=1,maxX=0,minY=1,maxY=0;
+  lm.forEach(p=>{
+    if(p.x<minX) minX=p.x; if(p.x>maxX) maxX=p.x;
+    if(p.y<minY) minY=p.y; if(p.y>maxY) maxY=p.y;
+  });
+  return (maxX-minX)*(maxY-minY);
+}
+function pickPlayerHand(handsList){
+  if(handsList.length===1) return handsList[0];
+  let best = handsList[0], bestSize = handBoxSize(handsList[0]);
+  for(let i=1;i<handsList.length;i++){
+    const size = handBoxSize(handsList[i]);
+    if(size > bestSize){ bestSize = size; best = handsList[i]; }
+  }
+  lastHandSize = bestSize;
+  return best;
 }
 
 function onHandResults(results){
@@ -793,7 +818,7 @@ function onHandResults(results){
   }
 
   if(results.multiHandLandmarks && results.multiHandLandmarks.length>0){
-    const lm = results.multiHandLandmarks[0];
+    const lm = pickPlayerHand(results.multiHandLandmarks);
     const indexTip = lm[8];
     cursorX = 1 - indexTip.x;
     cursorY = indexTip.y;
@@ -885,7 +910,7 @@ function startLevel(idx){
   refreshPowerUI();
   goTo('screen-game');
   const gameVideo = document.getElementById('video');
-  if(gameVideo) gameVideo.style.display = usingHandMode ? 'block' : 'none';
+  if(gameVideo) gameVideo.style.display = gameVideo.srcObject ? 'block' : 'none';
   startBgMusic();
   showQuestion();
 }
