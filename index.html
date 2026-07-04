@@ -555,7 +555,7 @@ let powerUps = { time:3, fifty:3, hint:3, multi:2 };
 let multiplierActive = false;
 let fiftyUsedThisQ = false, hintUsedThisQ = false;
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx8V6auDV0PliCXzt9bVcHTJyWkg4Vsu2R0YaO5ZweCYKH1GZhD7dHseSnDW2Nz7uaO/exec";
+const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 function goTo(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -740,6 +740,14 @@ async function initHands(){
     usingHandMode = true;
     document.getElementById('camStatus').textContent = '✅ พบมือแล้ว! ทำท่าหยิบจับ (โป้ง+ชี้) เพื่อทดสอบ';
     document.getElementById('btnCamOk').disabled = false;
+    // แชร์สตรีมกล้องเดียวกันไปให้ video ในหน้าเกมด้วย เพื่อให้เห็นภาพกล้องระหว่างเล่น
+    try{
+      const gameVideo = document.getElementById('video');
+      if(gameVideo && videoEl.srcObject){
+        gameVideo.srcObject = videoEl.srcObject;
+        gameVideo.play().catch(()=>{});
+      }
+    }catch(e){ console.warn('share stream to game video failed', e); }
   }catch(err){
     document.getElementById('camStatus').textContent = '⚠️ เปิดกล้องไม่ได้ — ใช้โหมดแตะหน้าจอแทนได้เลย';
     enableFallback();
@@ -837,6 +845,8 @@ function startLevel(idx){
   spawnIcons('gameIconBg', level.icons);
   refreshPowerUI();
   goTo('screen-game');
+  const gameVideo = document.getElementById('video');
+  if(gameVideo) gameVideo.style.display = usingHandMode ? 'block' : 'none';
   startBgMusic();
   showQuestion();
 }
@@ -860,7 +870,7 @@ function showQuestion(){
     b.style.left = positions[i][0]+'%';
     b.style.top = positions[i][1]+'%';
     b.dataset.correct = opt.correct;
-    b.addEventListener('click', ()=>{ if(!usingHandMode) answer(b, opt.correct); });
+    b.addEventListener('click', ()=>{ answer(b, opt.correct); });
     field.appendChild(b);
   });
   timeLeft = 15;
