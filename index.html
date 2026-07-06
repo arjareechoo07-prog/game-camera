@@ -306,6 +306,13 @@
 
   .toggle-mode{margin-top:10px;font-size:14px;color:#7a5aa8;cursor:pointer;text-decoration:underline;}
 
+  .congrats-banner{
+    background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:#fff;
+    font-family:'Kanit',sans-serif;font-weight:700;padding:16px 24px;border-radius:20px;
+    max-width:560px;margin:0 auto 16px;box-shadow:0 10px 24px rgba(242,160,7,.35);
+    font-size:16px;line-height:1.7;animation:congratsPop .5s ease-out;
+  }
+  @keyframes congratsPop{0%{transform:scale(.85);opacity:0;}100%{transform:scale(1);opacity:1;}}
   .room-tabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:640px;margin-bottom:12px;}
   .room-tab{padding:6px 14px;border-radius:999px;background:#fff;border:2px solid #E4DAF0;font-family:'Kanit',sans-serif;font-size:13px;cursor:pointer;}
   .room-tab.active{background:var(--plum);color:#fff;border-color:var(--plum);}
@@ -466,6 +473,7 @@
   <div class="screen vivid-bg" id="screen-leaderboard">
     <div class="content-layer">
       <h2>🏆 กระดานผู้กล้าอัญมณีราชาศัพท์</h2>
+      <div id="congratsBanner" class="congrats-banner" style="display:none;"></div>
       <div class="room-tabs" id="roomTabs"></div>
       <div class="owner-bar">
         <button class="btn small ghost" id="ownerBtn">🔧 โหมดเจ้าของ</button>
@@ -495,7 +503,7 @@
       <li>ตอบถูกครบทุกข้อในด่าน จะได้ <b>โบนัสความสมบูรณ์แบบ +200</b></li>
     </ul>
     <h3>การ์ดพลังช่วยเหลือ (ใช้ได้จำกัดต่อด่าน)</h3>
-    <p style="font-size:13px;color:#7a5aa8;margin-top:-4px;">ถ้าเล่นด้วยมือ สามารถเอาปลายนิ้วไปแตะที่ปุ่มการ์ดพลังโดยตรงเพื่อใช้งานได้เลย ไม่ต้องใช้เมาส์</p>
+    <p style="font-size:13px;color:#7a5aa8;margin-top:-4px;">ปุ่มการ์ดพลังและปุ่มอื่นๆ ในเกมต้องแตะหรือคลิกจริงเท่านั้น (ท่ามือลอยในอากาศใช้ได้เฉพาะตอนลากคำตอบไปใส่วงกลมตอบเท่านั้น)</p>
     <div id="powerExplainList">
       <div class="power-explain"><span class="ic">⏰</span> เวลาพิเศษ — เพิ่มเวลา 10 วินาทีในข้อนั้น</div>
       <div class="power-explain"><span class="ic">✂️</span> ตัดตัวเลือก — ตัดคำตอบผิดออก 2 ตัวเลือก</div>
@@ -639,7 +647,7 @@ let powerUps = { time:3, fifty:3, hint:3, multi:2 };
 let multiplierActive = false;
 let fiftyUsedThisQ = false, hintUsedThisQ = false;
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx8V6auDV0PliCXzt9bVcHTJyWkg4Vsu2R0YaO5ZweCYKH1GZhD7dHseSnDW2Nz7uaO/exec";
+const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 function goTo(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -916,9 +924,10 @@ function onHandResults(results){
       ctx.beginPath(); ctx.arc((1-indexTip.x)*drawCanvas.width, indexTip.y*drawCanvas.height, 9,0,7); ctx.fill();
     }
 
-    // จุดเรืองแสงตามปลายนิ้วให้เห็นได้ทุกหน้าจอ (ตั้งแต่หน้ากรอกชื่อเป็นต้นไป)
+    // จุดเรืองแสงตามปลายนิ้วให้เห็นได้ทุกหน้าจอ (ตั้งแต่หน้ากรอกชื่อเป็นต้นไป) — ใช้แสดงตำแหน่งเฉยๆ
+    // ปุ่มต่างๆ (การ์ดพลัง, กล่องเลือกถ้ำ ฯลฯ) ไม่ตอบสนองต่อท่ามือแล้ว ต้องแตะ/คลิกจริงเท่านั้น
+    // เพราะไวเกินไปจนกดโดยไม่ตั้งใจ ท่ามือใช้ได้เฉพาะตอนลากคำตอบไปใส่วงกลมตอบเท่านั้น
     updateCursor();
-    runGlobalHandTouch(cursorX*window.innerWidth, cursorY*window.innerHeight);
     if(isGameActive) handleGrabLogic();
   } else {
     handVisible = false;
@@ -1037,30 +1046,6 @@ function releaseBubble(b){
   b.classList.remove('grabbed');
   b.style.left = (b.dataset.origLeft||50)+'%';
   b.style.top = (b.dataset.origTop||50)+'%';
-}
-
-const handTouchCooldown = new WeakMap();
-function runGlobalHandTouch(px, py){
-  const now = Date.now();
-  const selector = 'button, [data-action], .cave-node, .toggle-mode, .room-tab';
-  const els = document.querySelectorAll(selector);
-  els.forEach(function(el){
-    if(el.offsetParent === null) return; // ซ่อนอยู่ (อยู่ในหน้าจอที่ไม่ได้แสดง) ให้ข้ามไป
-    if(el.disabled) return;
-    const r = el.getBoundingClientRect();
-    if(r.width===0 || r.height===0) return;
-    const cx = r.left + r.width/2, cy = r.top + r.height/2;
-    const radius = Math.max(r.width, r.height)/2 + 18;
-    if(Math.hypot(px-cx, py-cy) < radius){
-      const until = handTouchCooldown.get(el) || 0;
-      if(now > until){
-        el.click();
-        handTouchCooldown.set(el, now+900);
-        el.classList.add('touched-glow');
-        setTimeout(()=>el.classList.remove('touched-glow'), 300);
-      }
-    }
-  });
 }
 
 function handleGrabLogic(){
@@ -1211,6 +1196,13 @@ function renderLevels(justCompletedId, stars){
 }
 
 /* ================= LEADERBOARD ================= */
+const PRAISE_MESSAGES = [
+  'สุดยอดไปเลย! เก่งคำราชาศัพท์มากค่ะ',
+  'ยอดเยี่ยมมาก! ผจญภัยครบทุกถ้ำแล้วนะคะ',
+  'เก่งมากๆ ค่ะ! อัญมณีครบทั้ง 5 ถ้ำแล้ว',
+  'สุดยอดนักผจญภัย! ภูมิใจในตัวหนูมากค่ะ',
+  'เยี่ยมมาก! ความพยายามของหนูออกมาดีมากค่ะ'
+];
 function submitTotalScore(){
   const payload = { action:'submitScore', name:player.name, room:player.room, no:player.no, score:totalScore, ts:new Date().toISOString() };
   if(APPS_SCRIPT_URL.startsWith('PASTE_')){
@@ -1223,6 +1215,10 @@ function submitTotalScore(){
     body:JSON.stringify(payload)
   }).then(r=>r.json()).then(res=>{
     if(res && res.error){ alert('ส่งคะแนนไม่สำเร็จ (เซิร์ฟเวอร์แจ้งว่า: '+res.message+')\n\nโปรดแจ้งครูอาจารีให้ตรวจสอบค่า SPREADSHEET_ID ในไฟล์ Code.gs ว่าใส่ถูกต้องหรือยัง'); return; }
+    const praise = PRAISE_MESSAGES[Math.floor(Math.random()*PRAISE_MESSAGES.length)];
+    const banner = document.getElementById('congratsBanner');
+    banner.innerHTML = '🎉 ยินดีด้วย '+player.name+'! ผ่านครบทั้ง 5 ถ้ำแล้ว<br>💎 คะแนนรวมทั้งหมด: '+totalScore+' คะแนน<br>'+praise;
+    banner.style.display = 'block';
     goTo('screen-leaderboard'); loadLeaderboard();
   }).catch(()=>alert('ส่งคะแนนไม่สำเร็จ (เชื่อมต่อเซิร์ฟเวอร์ไม่ได้) ลองใหม่อีกครั้งนะคะ'));
 }
@@ -1539,7 +1535,7 @@ function bindUIEvents(){
   on('btnHowToLogin','click', openHowTo);
   on('btnCamOk','click', ()=>goTo('screen-levels'));
   on('btnFallback','click', enableFallback);
-  on('btnGoLeaderboard','click', ()=>{ goTo('screen-leaderboard'); loadLeaderboard(); });
+  on('btnGoLeaderboard','click', ()=>{ document.getElementById('congratsBanner').style.display='none'; goTo('screen-leaderboard'); loadLeaderboard(); });
   on('btnHowToLevels','click', openHowTo);
   on('musicToggleBtn','click', toggleMusicMute);
   on('pbTime','click', usePowerTime);
