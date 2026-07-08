@@ -646,8 +646,9 @@ const completedLevels = new Set();
 let powerUps = { time:3, fifty:3, hint:3, multi:2 };
 let multiplierActive = false;
 let fiftyUsedThisQ = false, hintUsedThisQ = false;
+let questionAnswered = false;
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx8V6auDV0PliCXzt9bVcHTJyWkg4Vsu2R0YaO5ZweCYKH1GZhD7dHseSnDW2Nz7uaO/exec";
+const APPS_SCRIPT_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 function goTo(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1014,6 +1015,7 @@ function shuffle(arr){ return arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0
 function showQuestion(){
   const level = LEVELS[currentLevelIdx];
   if(currentQIdx >= level.questions.length){ return finishLevel(); }
+  questionAnswered = false;
   fiftyUsedThisQ = false; hintUsedThisQ = false; refreshPowerUI();
   const item = level.questions[currentQIdx];
   document.getElementById('questionBox').textContent = item.q;
@@ -1104,6 +1106,9 @@ function handleGrabLogic(){
 }
 
 function answer(bubbleEl, isCorrect){
+  if(questionAnswered) return; // กันไม่ให้กดซ้ำๆ ยิบๆ ได้คะแนนเพิ่มเกินจริงต่อข้อเดียวกัน
+  questionAnswered = true;
+  document.querySelectorAll('#bubbleField .bubble').forEach(b=>b.style.pointerEvents='none');
   clearInterval(questionTimer);
   const rect = bubbleEl ? bubbleEl.getBoundingClientRect() : {left:window.innerWidth/2, top:window.innerHeight/2, width:0, height:0};
   const px = rect.left + rect.width/2, py = rect.top + rect.height/2;
@@ -1237,18 +1242,43 @@ function renderRoomTabs(){
 
 function toggleOwnerMode(){
   if(!ownerMode){
+    if(APPS_SCRIPT_URL.startsWith('PASTE_')){
+      alert('ยังไม่ได้เชื่อมต่อ Google Sheet ค่ะ — โปรด deploy Apps Script backend ก่อน');
+      return;
+    }
     const pass = prompt('รหัสผ่านเจ้าของ (ครู) เพื่อแก้ไข/ลบคะแนน:');
-    if(pass===null) return;
-    ownerMode = true;
-    window.__ownerPass = pass;
-    document.getElementById('ownerBtn').textContent = '✅ โหมดเจ้าของ (เปิดอยู่)';
-  } else {
-    ownerMode = false;
-    window.__ownerPass = null;
-    document.getElementById('ownerBtn').textContent = '🔧 โหมดเจ้าของ';
+    if(pass===null || pass.trim()==='') return;
+    document.getElementById('ownerBtn').disabled = true;
+    document.getElementById('ownerBtn').textContent = 'กำลังตรวจสอบรหัสผ่าน...';
+    fetch(APPS_SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({ action:'adminVerifyPasscode', passcode:pass })
+    }).then(r=>r.json()).then(res=>{
+      document.getElementById('ownerBtn').disabled = false;
+      if(res && res.status==='ok'){
+        ownerMode = true;
+        window.__ownerPass = pass;
+        document.getElementById('ownerBtn').textContent = '✅ โหมดเจ้าของ (เปิดอยู่)';
+      } else {
+        ownerMode = false;
+        document.getElementById('ownerBtn').textContent = '🔧 โหมดเจ้าของ';
+        alert('รหัสผ่านไม่ถูกต้องค่ะ');
+      }
+      document.getElementById('ownerColHead').style.display = ownerMode? '':'none';
+      document.getElementById('btnOpenAdmin').style.display = ownerMode? 'inline-block':'none';
+      loadLeaderboard();
+    }).catch(()=>{
+      document.getElementById('ownerBtn').disabled = false;
+      document.getElementById('ownerBtn').textContent = '🔧 โหมดเจ้าของ';
+      alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้งนะคะ');
+    });
+    return;
   }
-  document.getElementById('ownerColHead').style.display = ownerMode? '':'none';
-  document.getElementById('btnOpenAdmin').style.display = ownerMode? 'inline-block':'none';
+  ownerMode = false;
+  window.__ownerPass = null;
+  document.getElementById('ownerBtn').textContent = '🔧 โหมดเจ้าของ';
+  document.getElementById('ownerColHead').style.display = 'none';
+  document.getElementById('btnOpenAdmin').style.display = 'none';
   loadLeaderboard();
 }
 
